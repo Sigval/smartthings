@@ -122,7 +122,7 @@ def getPrice() {
                     def currency = resp.data.data.viewer.homes[homeNumber()].currentSubscription.priceInfo.current.currency
                     def total = resp.data.data.viewer.homes[homeNumber()].currentSubscription.priceInfo.current.total
                     
-                    state.currency = "${currency}: ${currencyToMinor(currency)}/kWh"
+                    state.currency = "${currencyToMinor(currency)}/kWh"
                     state.level = resp.data.data.viewer.homes[homeNumber()].currentSubscription.priceInfo.current.level
                     state.price = Math.round(total * 100)
 

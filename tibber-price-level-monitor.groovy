@@ -22,11 +22,11 @@ metadata {
         )
         input (
             name: "apkeylink",
-            type: "paragraph",
+            type: "link",
             title: "API Key can be found here:",
-            description: "https://developer.tibber.com/settings/accesstoken"
+            description: '<a href="https://developer.tibber.com/settings/accesstoken">Tibber Accesstoken Token</a>'
         )
-	input (
+		input (
             name: "home",
             type: "number",
             title: "Home",
@@ -68,7 +68,7 @@ metadata {
             name: "VERSION",
             type: "paragraph",
             title: "Version number",
-            description: "140421"
+            description: "customized x.1.0"
         )
     }
 }
@@ -113,21 +113,21 @@ def getPrice() {
         def params = [
             uri: "https://api.tibber.com/v1-beta/gql",
             headers: ["Content-Type": "application/json;charset=UTF-8" , "Authorization": "Bearer $tibber_apikey"],
-            body: graphQLApiQuery()
+            body: '{"query": "{viewer {homes {address{address1} consumption(resolution: HOURLY, last: 1) {nodes {consumption consumptionUnit}} currentSubscription {priceInfo { current {total currency level} today {total startsAt} tomorrow{ total startsAt }}}}}}", "variables": null, "operationName": null}'
         ]
         try {
             httpPostJson(params) { resp ->
                 if(resp.status == 200){
 
-                    def price = Math.round(resp.data.data.viewer.homes[homeNumber()].currentSubscription.priceInfo.current.total * 100)
                     def currency = resp.data.data.viewer.homes[homeNumber()].currentSubscription.priceInfo.current.currency
-                    def level = resp.data.data.viewer.homes[homeNumber()].currentSubscription.priceInfo.current.level
-                   
+                    def total = resp.data.data.viewer.homes[homeNumber()].currentSubscription.priceInfo.current.total
+                    
                     state.currency = "${currency}: ${currencyToMinor(currency)}/kWh"
-                    state.level = level
-                    state.price = price
+                    state.level = resp.data.data.viewer.homes[homeNumber()].currentSubscription.priceInfo.current.level
+                    state.price = Math.round(total * 100)
 
-                    sendEvent(name: "price", value: state.price, unit: currency)
+					sendEvent(name: "energy", value: state.price, unit: currency)
+                    sendEvent(name: "price", value: state.price, unit: state.currency)
                     sendEvent(name: "currency", value: state.currency)
                     sendEvent(name: "level", value: state.level)
                 }
@@ -141,18 +141,10 @@ def getPrice() {
 def parse(String description) {
     log.debug "parse description: ${description}"
     def eventMap = [
-        createEvent(name: "energy", value: state.price, unit: state.currency)
-        ,createEvent(name: "level", value: state.level)
-        ,createEvent(name: "price", value: state.price, unit: state.currency)
-        ,createEvent(name: "priceNextHour", value: state.priceNextHour, unit: state.currency)
-        ,createEvent(name: "pricePlusTwoHour", value: state.pricePlusTwoHour, unit: state.currency)
-        ,createEvent(name: "priceMaxDay", value: state.priceMaxDay, unit: state.currency)
-        ,createEvent(name: "priceMinDay", value: state.priceMinDay, unit: state.currency)
-        ,createEvent(name: "priceNextHourLabel", value: state.priceNextHourLabel)
-        ,createEvent(name: "pricePlus2HourLabel", value: state.pricePlus2HourLabel)
-        ,createEvent(name: "priceMaxDayLabel", value: state.priceMaxDayLabel)
-        ,createEvent(name: "priceMinDayLabel", value: state.priceMinDayLabel)    
-        ,createEvent(name: "currencyLabel", value: state.currency, unit: state.currency)   
+        createEvent(name: "energy", value: state.price, unit: state.currency),
+        createEvent(name: "level", value: state.level),
+        createEvent(name: "price", value: state.price, unit: state.currency),
+        createEvent(name: "currencyLabel", value: state.currency, unit: state.currency)
     ]
     log.debug "Parse returned ${description}"
     return eventMap
@@ -168,8 +160,4 @@ def currencyToMinor(String currency){
     }
     return currencyUnit;
     
-}
-
-def graphQLApiQuery(){
-    return '{"query": "{viewer {homes {address{address1} consumption(resolution: HOURLY, last: 1) {nodes {consumption consumptionUnit}} currentSubscription {priceInfo { current {total currency level} today {total startsAt} tomorrow{ total startsAt }}}}}}", "variables": null, "operationName": null}';
 }
